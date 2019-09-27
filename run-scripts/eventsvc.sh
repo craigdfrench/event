@@ -3,7 +3,7 @@
 APPNAME=com.github.craigdfrench.event-service
 PIDPATH=/tmp
 REPOBASE=$GOPATH/src/github.com/craigdfrench/event-service
-MAKEFILE_DIRS=( contracts run-scripts web-ui )
+MAKEFILE_DIRS=( run-scripts contracts web-ui )
 GO_INSTALL_DIRS=( storage web )
 
 function build_makefiles {
