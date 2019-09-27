@@ -26,7 +26,7 @@ const (
 	// EventTableDefinition for definition of event table
 	EventTableDefinition = "event.relation.sql"
 	// GoPathSrcDir is where the event definition is found
-	GoPathSrcDir = "/src/github.com/craigdfrench/event-logger/storage/"
+	GoPathSrcDir = "/src/github.com/craigdfrench/event-service/storage/"
 	// EventDatabaseConnectionString specifies credentials to access database
 	EventDatabaseConnectionString = "user=pqgotest dbname=pqgotest password=pqgotest sslmode=disable"
 )
