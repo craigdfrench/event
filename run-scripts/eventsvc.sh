@@ -1,10 +1,8 @@
 #!/bin/bash 
 
-APPNAME=com.github.craigdfrench.event-logger
+APPNAME=com.github.craigdfrench.event-service
 PIDPATH=/tmp
-STORAGE_PID=$PIDPATH/$APPNAME.storage.pid
-WEB_PID=$PIDPATH/$APPNAME.rest.pid
-REPOBASE=$GOPATH/src/github.com/craigdfrench/event-logger
+REPOBASE=$GOPATH/src/github.com/craigdfrench/event-service
 MAKEFILE_DIRS=( contracts run-scripts web-ui )
 GO_INSTALL_DIRS=( storage web )
 
@@ -116,16 +114,3 @@ restart)
 esac
 
 exit 0
-
-set -e
-cd $BASE/event-contracts
-echo Building gRPC bindings
-./build-proto-go.sh
-echo Running gRPC server
-go install -v $BASE/eventdatabase/eventdatabase.go
-eventdatabase &
-echo $! > $PIDPATH/rpc-server.pid 
-go install -v $BASE/rest/main.go
-main &
-echo $! > $STORAGE_PID 
-chmod u-w $STORAGE_PID $PIDPATH/rpc-server.pid
