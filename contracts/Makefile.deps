@@ -1,0 +1,3 @@
+eventdatabase.pb.go: timestamp.proto\
+ duration.proto\
+ eventdatabase.proto

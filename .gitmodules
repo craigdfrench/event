@@ -1,0 +1,3 @@
+[submodule "log-ui"]
+	path = log-ui
+	url = http://github.com/craigdfrench/log-ui
