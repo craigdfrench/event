@@ -16,7 +16,7 @@ import (
 const (
 	address     = "localhost:50051"
 	defaultName = "world"
-	gopathWebUI = "github.com/craigdfrench/event-logger/web-ui/"
+	gopathWebUI = "github.com/craigdfrench/event-service/web-ui/"
 	webUIBuild  = "build/"
 )
 
