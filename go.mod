@@ -1,4 +1,4 @@
-module github.com/craigdfrench/event-service
+module github.com/craigdfrench/event
 
 go 1.13
 

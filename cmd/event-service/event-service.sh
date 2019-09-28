@@ -1,9 +1,9 @@
 #!/bin/bash 
 
-APPNAME=com.github.craigdfrench.event-service
+APPNAME=com.github.craigdfrench.event
 PIDPATH=/tmp
-REPOBASE=$GOPATH/src/github.com/craigdfrench/event-service
-MAKEFILE_DIRS=( run-scripts contracts web-ui )
+REPOBASE=$GOPATH/src/github.com/craigdfrench/event
+MAKEFILE_DIRS=( web-ui )
 GO_INSTALL_DIRS=( storage web )
 
 function build_makefiles {
@@ -16,10 +16,11 @@ function build_makefiles {
 
 function build_goinstallables {
     cd $REPOBASE
-    for dir in ${GO_INSTALL_DIRS[@]}; do
-        echo Executing: go install $REPOBASE/$dir/event-$dir.go  
-        go install $REPOBASE/$dir/event-$dir.go     
-    done
+    go install ./...
+#    for dir in ${GO_INSTALL_DIRS[@]}; do
+#        echo Executing: go install $REPOBASE/$dir/event-$dir.go  
+#        go install $REPOBASE/$dir/event-$dir.go     
+#    done
 }
 
 function run_goinstallables {

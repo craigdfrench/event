@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/craigdfrench/event-service/daemon/grpc"
-	"github.com/craigdfrench/event-service/storage"
+	pb "github.com/craigdfrench/event/daemon/grpc"
+	"github.com/craigdfrench/event/storage"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 )
@@ -23,7 +23,7 @@ const (
 	// EventTableDefinition for definition of event table
 	EventTableDefinition = "event.relation.sql"
 	// GoPathSrcDir is where the event definition is found
-	GoPathSrcDir = "/src/github.com/craigdfrench/event-service/storage/"
+	GoPathSrcDir = "/src/github.com/craigdfrench/event/storage/"
 	// EventDatabaseConnectionString specifies credentials to access database
 	EventDatabaseConnectionString = "user=pqgotest dbname=pqgotest password=pqgotest sslmode=disable"
 )
@@ -77,91 +77,3 @@ func (s *EventServer) ReadSingleEvent(ctx context.Context, in *pb.EventIdentifie
 	return &event, nil
 }
 
-// InsertEvent will insert the record format
-func insertEvent(db *sql.DB, CreatedAt, Email, Environment, Component, Message, Data string) (ID string, err error) {
-	sqlStatement := `
-		INSERT INTO public.event ("CreatedAt", "Email", "Environment", "Component", "Message", "Data")
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING "Id" `
-	ID = ""
-	err = db.QueryRow(sqlStatement, CreatedAt, Email, Environment, Component, Message, Data).Scan(&ID)
-	return
-}
-
-// GetEvents will retrieve events as per query
-func getEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
-	fmt.Printf("query is %s %d %d", query, len(query.Message), len(query.Environment))
-	var queryString []string
-	var queryArgs []interface{}
-	if len(query.Component) > 0 {
-		queryString = append(queryString, fmt.Sprintf(`"Component" = $%d`, len(queryArgs)+1))
-		queryArgs = append(queryArgs, query.Component)
-	}
-	if len(query.Email) > 0 {
-		queryString = append(queryString, fmt.Sprintf(`"Email" = $%d`, len(queryArgs)+1))
-		queryArgs = append(queryArgs, query.Email)
-	}
-	if len(query.Environment) > 0 {
-		queryString = append(queryString, fmt.Sprintf(`"Environment" = $%d`, len(queryArgs)+1))
-		queryArgs = append(queryArgs, query.Environment)
-	}
-	if len(query.Message) > 0 {
-		queryString = append(queryString, fmt.Sprintf(`POSITION($%d in "Message")>0`, len(queryArgs)+1))
-		queryArgs = append(queryArgs, query.Message)
-	}
-	fmt.Println("queryString is ", queryString, "=>", queryArgs)
-	var whereClause string
-	switch len(queryString) {
-	case 0:
-		whereClause = "TRUE"
-	case 1:
-		whereClause = queryString[0]
-	default:
-		whereClause = strings.Join(queryString, " AND ")
-	}
-	fmt.Printf("whereClause  is SELECT * from public.event WHERE %s", whereClause)
-	rows, err := db.Query("SELECT * from public.event WHERE "+whereClause, queryArgs...)
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
-	}
-	fmt.Println("In getEvents", rows)
-	eventRecords := []*pb.Event{}
-	for rows.Next() {
-		eventRecord := pb.Event{}
-		if err = rows.Scan(&eventRecord.Id, &eventRecord.CreatedAt, &eventRecord.Email, &eventRecord.Environment, &eventRecord.Component, &eventRecord.Message, &eventRecord.Data); err != nil {
-			fmt.Println("Errored out", err.Error())
-
-			eventRecords = nil
-			break
-		}
-		fmt.Println(eventRecord)
-		eventRecords = append(eventRecords, &eventRecord)
-	}
-	return eventRecords, err
-}
-
-func main() {
-	var schema string
-	if gopath, present := os.LookupEnv("GOPATH"); present {
-		schema = gopath + GoPathSrcDir + EventTableDefinition
-	} else {
-		schema = "./" + EventTableDefinition
-	}
-
-	db, err := storage.SetupDatabase(EventDatabaseBackend, EventDatabaseConnectionString, schema)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer db.Close()
-
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-	pb.RegisterEventServiceServer(s, &EventServer{Database: db})
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
-}

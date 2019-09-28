@@ -5,13 +5,10 @@ import (
 	"net"
 	"os"
 
-	"github.com/craigdfrench/event-service/storage"
-	"github.com/craigdfrench/event-service/service"
-	pb "github.com/craigdfrench/event-service/service/grpc"
+	"github.com/craigdfrench/event/daemon"
+	pb "github.com/craigdfrench/event/daemon/grpc"
+	"github.com/craigdfrench/event/storage"
 	"google.golang.org/grpc"
-
-	// Tied to postgreSQL
-	_ "github.com/lib/pq"
 )
 
 const (
@@ -45,7 +42,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterEventServiceServer(s, &service.EventServer{db})
+	pb.RegisterEventServiceServer(s, &daemon.EventServer{db})
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
