@@ -1,1 +1,2 @@
 contracts/eventdatabase.pb.go
+daemon/grpc/event.pb.go

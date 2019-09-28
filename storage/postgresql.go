@@ -1,4 +1,4 @@
-package dbutil 
+package storage 
 
 import (
 	"database/sql"

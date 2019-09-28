@@ -15,18 +15,18 @@
 syntax = "proto3";
 
 option java_multiple_files = true;
-option java_package = "storageService";
-option java_outer_classname = "StorageServiceProto";
+option java_package = "eventService";
+option java_outer_classname = "eventServiceProto";
 
-import "timestamp.proto";
 import "duration.proto";
+import "timestamp.proto";
 
-package storage;
+package event;
 
 
 
-// The greeting service definition.
-service StorageService {
+// The Event service definition.
+service EventService {
   // Writes single event generating a unique ID
   rpc WriteSingleEvent (Event) returns (EventIdentifier) {}
   // Reads single event from unique ID

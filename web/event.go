@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/craigdfrench/event-service/contracts"
+	pb "github.com/craigdfrench/event-service/service/grpc"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 )
@@ -38,7 +38,7 @@ func main() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	db := pb.NewStorageServiceClient(conn)
+	db := pb.NewEventServiceClient(conn)
 
 	var htmlPath string
 

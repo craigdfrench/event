@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"context"
@@ -10,8 +10,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/craigdfrench/event-service/contracts"
-	"github.com/craigdfrench/event-service/storage/dbutil-psql"
+	pb "github.com/craigdfrench/event-service/service/grpc"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 
@@ -31,9 +30,9 @@ const (
 	EventDatabaseConnectionString = "user=pqgotest dbname=pqgotest password=pqgotest sslmode=disable"
 )
 
-// server is used to implement storage.StorageServiceServer
-type server struct {
-	database *sql.DB
+// Server is used to implement storage.EventServiceServer
+type Server struct {
+	Database *sql.DB
 }
 
 // Event structure
@@ -48,14 +47,14 @@ type Event struct {
 }
 
 // WriteEvent implements storage.WriteEvent
-func (s *server) WriteSingleEvent(ctx context.Context, in *pb.Event) (*pb.EventIdentifier, error) {
+func (s *Server) WriteSingleEvent(ctx context.Context, in *pb.Event) (*pb.EventIdentifier, error) {
 	log.Println("Received: ", in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
-	id, err := insertEvent(s.database, in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
+	id, err := insertEvent(s.Database, in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
 	return &pb.EventIdentifier{Id: id}, err
 }
 
 // WriteEvent implements storage.QueryMultipleEvents
-func (s *server) QueryMultipleEvents(ctx context.Context, in *pb.QueryEventRequest) (response *pb.QueryEventResponse, err error) {
+func (s *Server) QueryMultipleEvents(ctx context.Context, in *pb.QueryEventRequest) (response *pb.QueryEventResponse, err error) {
 	//log.Println("Received: ", in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
 	startTime := time.Now()
 	if startTime, err = ptypes.Timestamp(in.GetTimeRange().GetStartTime()); err != nil {
@@ -68,13 +67,13 @@ func (s *server) QueryMultipleEvents(ctx context.Context, in *pb.QueryEventReque
 		Environment: in.Environment,
 		Component:   in.Component,
 		Message:     in.Message}
-	eventList, err = getEvents(s.database, query)
+	eventList, err = getEvents(s.Database, query)
 	response = &pb.QueryEventResponse{Results: eventList}
 	return
 }
 
 // WriteEvent implements storage.QueryMultipleEvents
-func (s *server) ReadSingleEvent(ctx context.Context, in *pb.EventIdentifier) (*pb.Event, error) {
+func (s *Server) ReadSingleEvent(ctx context.Context, in *pb.EventIdentifier) (*pb.Event, error) {
 	//log.Println("Received: ", in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
 	event := pb.Event{}
 	return &event, nil
@@ -152,7 +151,7 @@ func main() {
 		schema = "./" + EventTableDefinition
 	}
 
-	db, err := dbutil.SetupDatabase(EventDatabaseBackend, EventDatabaseConnectionString, schema)
+	db, err := SetupDatabase(EventDatabaseBackend, EventDatabaseConnectionString, schema)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -163,7 +162,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterStorageServiceServer(s, &server{database: db})
+	pb.RegisterEventServiceServer(s, &Server{Database: db})
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
