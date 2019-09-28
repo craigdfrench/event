@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/craigdfrench/event-service/service/grpc"
+	pb "github.com/craigdfrench/event/service/grpc"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 
@@ -25,7 +25,7 @@ const (
 	// EventTableDefinition for definition of event table
 	EventTableDefinition = "event.relation.sql"
 	// GoPathSrcDir is where the event definition is found
-	GoPathSrcDir = "/src/github.com/craigdfrench/event-service/storage/"
+	GoPathSrcDir = "/src/github.com/craigdfrench/event/storage/"
 	// EventDatabaseConnectionString specifies credentials to access database
 	EventDatabaseConnectionString = "user=pqgotest dbname=pqgotest password=pqgotest sslmode=disable"
 )

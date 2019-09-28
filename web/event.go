@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/craigdfrench/event-service/service/grpc"
+	pb "github.com/craigdfrench/event/service/grpc"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 )
@@ -16,7 +16,7 @@ import (
 const (
 	address     = "localhost:50051"
 	defaultName = "world"
-	gopathWebUI = "github.com/craigdfrench/event-service/web-ui/"
+	gopathWebUI = "github.com/craigdfrench/event/web-ui/"
 	webUIBuild  = "build/"
 )
 
