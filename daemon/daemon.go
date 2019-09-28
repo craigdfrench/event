@@ -1,4 +1,4 @@
-package service 
+package daemon 
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/craigdfrench/event-service/service/grpc"
+	pb "github.com/craigdfrench/event-service/daemon/grpc"
 	"github.com/craigdfrench/event-service/storage"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
@@ -28,7 +28,7 @@ const (
 	EventDatabaseConnectionString = "user=pqgotest dbname=pqgotest password=pqgotest sslmode=disable"
 )
 
-// Server is used to implement storage.EventServiceServer
+// EventServer is used to implement daemon
 type EventServer struct {
 	Database *sql.DB
 }
