@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/craigdfrench/event/service/grpc"
+	pb "github.com/craigdfrench/event/daemon/grpc"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 

@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/craigdfrench/event/service/grpc"
+	pb "github.com/craigdfrench/event/daemon/grpc"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 )
