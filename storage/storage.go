@@ -1,18 +1,12 @@
 package storage
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"log"
-	"net"
-	"os"
 	"strings"
 	"time"
 
 	pb "github.com/craigdfrench/event/daemon/grpc"
-	"github.com/golang/protobuf/ptypes"
-	"google.golang.org/grpc"
 
 	// Tied to postgreSQL
 	_ "github.com/lib/pq"
@@ -46,41 +40,8 @@ type Event struct {
 	Data        string
 }
 
-// WriteEvent implements storage.WriteEvent
-func (s *Server) WriteSingleEvent(ctx context.Context, in *pb.Event) (*pb.EventIdentifier, error) {
-	log.Println("Received: ", in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
-	id, err := insertEvent(s.Database, in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
-	return &pb.EventIdentifier{Id: id}, err
-}
-
-// WriteEvent implements storage.QueryMultipleEvents
-func (s *Server) QueryMultipleEvents(ctx context.Context, in *pb.QueryEventRequest) (response *pb.QueryEventResponse, err error) {
-	//log.Println("Received: ", in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
-	startTime := time.Now()
-	if startTime, err = ptypes.Timestamp(in.GetTimeRange().GetStartTime()); err != nil {
-		startTime = time.Now()
-	}
-	eventList := []*pb.Event{}
-	query := Event{
-		CreatedAt:   startTime,
-		Email:       in.Email,
-		Environment: in.Environment,
-		Component:   in.Component,
-		Message:     in.Message}
-	eventList, err = getEvents(s.Database, query)
-	response = &pb.QueryEventResponse{Results: eventList}
-	return
-}
-
-// WriteEvent implements storage.QueryMultipleEvents
-func (s *Server) ReadSingleEvent(ctx context.Context, in *pb.EventIdentifier) (*pb.Event, error) {
-	//log.Println("Received: ", in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
-	event := pb.Event{}
-	return &event, nil
-}
-
 // InsertEvent will insert the record format
-func insertEvent(db *sql.DB, CreatedAt, Email, Environment, Component, Message, Data string) (ID string, err error) {
+func InsertEvent(db *sql.DB, CreatedAt, Email, Environment, Component, Message, Data string) (ID string, err error) {
 	sqlStatement := `
 		INSERT INTO public.event ("CreatedAt", "Email", "Environment", "Component", "Message", "Data")
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -91,7 +52,7 @@ func insertEvent(db *sql.DB, CreatedAt, Email, Environment, Component, Message, 
 }
 
 // GetEvents will retrieve events as per query
-func getEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
+func GetEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
 	fmt.Printf("query is %s %d %d", query, len(query.Message), len(query.Environment))
 	var queryString []string
 	var queryArgs []interface{}
@@ -143,27 +104,3 @@ func getEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
 	return eventRecords, err
 }
 
-func main() {
-	var schema string
-	if gopath, present := os.LookupEnv("GOPATH"); present {
-		schema = gopath + GoPathSrcDir + EventTableDefinition
-	} else {
-		schema = "./" + EventTableDefinition
-	}
-
-	db, err := SetupDatabase(EventDatabaseBackend, EventDatabaseConnectionString, schema)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer db.Close()
-
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-	pb.RegisterEventServiceServer(s, &Server{Database: db})
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
-}

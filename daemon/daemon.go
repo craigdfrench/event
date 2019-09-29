@@ -3,17 +3,12 @@ package daemon
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
-	"net"
-	"os"
-	"strings"
 	"time"
 
 	pb "github.com/craigdfrench/event/daemon/grpc"
-	"github.com/craigdfrench/event/storage"
 	"github.com/golang/protobuf/ptypes"
-	"google.golang.org/grpc"
+	"github.com/craigdfrench/event/storage"
 )
 
 const (
@@ -47,7 +42,7 @@ type Event struct {
 // WriteEvent implements storage.WriteEvent
 func (s *EventServer) WriteSingleEvent(ctx context.Context, in *pb.Event) (*pb.EventIdentifier, error) {
 	log.Println("Received: ", in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
-	id, err := insertEvent(s.Database, in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
+	id, err := storage.InsertEvent(s.Database, in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
 	return &pb.EventIdentifier{Id: id}, err
 }
 
@@ -59,13 +54,13 @@ func (s *EventServer) QueryMultipleEvents(ctx context.Context, in *pb.QueryEvent
 		startTime = time.Now()
 	}
 	eventList := []*pb.Event{}
-	query := Event{
+	query := storage.Event{
 		CreatedAt:   startTime,
 		Email:       in.Email,
 		Environment: in.Environment,
 		Component:   in.Component,
 		Message:     in.Message}
-	eventList, err = getEvents(s.Database, query)
+	eventList, err = storage.GetEvents(s.Database, query)
 	response = &pb.QueryEventResponse{Results: eventList}
 	return
 }
