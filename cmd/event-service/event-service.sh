@@ -1,11 +1,13 @@
-#!/bin/bash -x 
+#!/bin/bash   
 
 APPNAME=com.github.craigdfrench.event
 PIDPATH=/tmp
 REPOBASE=$GOPATH/src/github.com/craigdfrench/event
-GO_INSTALL_DIRS=( daemon web )
-INSTALLED_APPS=`find . -name '*.go' | xargs grep  -n '^package main$' | cut -d ':' -f 1-1 | xargs -n1 dirname | xargs -n1 basename`
-VERBOSE=$2
+INSTALLED_APPS=`find $REPOBASE -name '*.go' | xargs grep  -n '^package main$' | cut -d ':' -f 1-1 | xargs -n1 dirname | xargs -n1 basename`
+[[ $2 == "--verbose" ]] && VERBOSE=1
+[[ $2 == "-v" ]] && VERBOSE=1 
+
+echo VERBOSE is $VERBOSE
 function show_help {
     verbose verbose text here verbose set to $VERBOSE
     echo ${INSTALLED_APPS} are installed apps
@@ -18,18 +20,18 @@ function show_help {
     echo help
 }
 
-function build_goinstallables {
+function build {
     cd $REPOBASE
     go generate ./...
     go install ./...
 }
 
 function run_apps {
-    app=$1
+    app=$2;pidfile=$1
     echo Starting service $app  
-    app &
-    echo $! > ${PIDPATH}/${APPNAME}.$app.pid
-    verbose ${PIDPATH}/${APPNAME}.$app.pid 
+    $app &
+    echo $! > $pidfile
+    verbose Stored PID for $app in $pidfile 
 }
 
 function verbose {
@@ -39,27 +41,47 @@ function verbose {
     fi
 }
 
-function run_goinstallables {
-    cd $REPOBASE
-    iterate_apps run_apps 
-}
-
 function iterate_apps {
-    action=$1; parameter=$2; accumulator=$3 
+    action=$1; accumulator=0
     verbose iterate_apps called with $action
     for appcmd in ${INSTALLED_APPS[@]}; do
-        verbose "action <$action> appcmd <$appcmd> param <$parameter> acc<$accumulator>" 
-        ${action} $appcmd $parameter $accumulator
+        verbose "iterate_apps:${action} $appcmd $accumulator ${@:2}"
+        ${action} $appcmd $accumulator "${@:2}"
         accumulator=$?
-        verbose accumulator is $accumulator
+        verbose accumulator=$accumulator
     done
     return $accumulator
 }
 
+# app_callbacks are called with 2 parameters: path_to_pidfile_for_component name_of_component
+# iterate_apps_by_runstate [running|notrunning] app_callback ...(additional parameters)
+function iterate_apps_by_runstate {
+    runstate=$1
+    iterate_apps conditional_cmd $runstate "${@:2}"
+    return $?
+}
+
+# To use, call iterate_apps conditional_cmd [running|not_running] 
+function conditional_cmd {
+    pidfile=${PIDPATH}/${APPNAME}.$1.pid
+    appcmd=$1;accumulator=$2;cmd=$4;sense=$3
+    [[ -e $pidfile ]] && pidFilePresent="running" || pidFilePresent="not_running" 
+    verbose echo "inside <${@}> conditional_cmd cmd <$cmd> appcmd <$appcmd> accumulator <$accumulator> sense <$sense> pidFilePresent <$pidFilePresent>"
+
+    if [[ $sense == $pidFilePresent ]]
+    then    
+        verbose "conditional_cmd executing <$cmd> <$pidfile> <$appcmd> "
+        $cmd $pidfile $appcmd
+        accumulator=$((accumulator+1))
+    fi 
+    return $accumulator
+}
+
+
 function running_cmd {
     pidfile=${PIDPATH}/${APPNAME}.$1.pid
     appcmd=$1;cmd=$2;acc=$3
-    verbose "inside running_cmd cmd <$cmd> appcmd <$appcmd> acc <$acc>" 
+    verbose "inside running_cmd cmd <$cmd> appcmd <$appcmd> acc <$acc>"
     if [ -e $pidfile ]
     then    
         acc=$((acc+1))   
@@ -91,8 +113,8 @@ function not_running_cmd {
     return $acc
 }
 
-function noop {
-    verbose inside noop
+function count {
+    verbose inside count
 }
 
 function count_running {
@@ -102,46 +124,27 @@ function count_running {
 
 function action_running { 
     action=$1
-    iterate_apps running_cmd $action
+    iterate_apps conditional_cmd 0 $action running
     return $?     
 }
 
 function action_notrunning {
     action=$1
-    iterate_apps not_running_cmd $action
+    iterate_apps_by_runstate not_running $action
     return $?     
 }
 
-function check_goinstallables {
-    servicecount=0
-    for dir in ${INSTALLED_APPS[@]}; do
-        echo Checking for service event-$dir  
-        if [ -e ${PIDPATH}/${APPNAME}.event-$dir.pid ]
-        then
-            if [ $# -gt 0 ]
-            then
-                $1 ${PIDPATH}/${APPNAME}.event-$dir.pid event-$dir
-            fi     
-            servicecount=$((servicecount+1))
-        fi
-        echo ${PIDPATH}/${APPNAME}.event-$dir.pid 
-    done
-    return $servicecount
-}
-
-
-
 function start_service {
     build_goinstallables
-    run_goinstallables
+    iterate_apps conditional_cmd 0 running run_apps
 }
 
 function stop_service {
     action_running kill_service  
 }
 
-function print_ps {
-    ps `cat $1` | tail -1
+function print_ps { 
+    ps `cat $1` | tail -1 
 }
 
 function print_notrunning {
@@ -157,43 +160,43 @@ function kill_service {
 
 case "$1" in
 status)    
-    action_running print_ps
+    iterate_apps_by_runstate running print_ps
     echo $? services running
-    action_notrunning print_notrunning
+    iterate_apps_by_runstate not_running print_notrunning
     echo $? services not_running
     ;;
+build) 
+    build
+    ;;
 start) 
-    count_running 
+    iterate_apps_by_runstate running count 
     if [ $? -gt 0 ]
     then 
-        echo "Event Services running."
-        echo "Cannot start."
-        exit 0
+        echo "Event Services already running."
+        exit 1
     else
-        start_service
+        iterate_apps_by_runstate not_running run_apps
     fi
     ;;
 stop)
-    count_running
+    iterate_apps_by_runstate running count
     if [ $? -eq 0 ]
     then 
         echo "Event Services not running."
-        echo "Cannot stop."
-        exit 0
+        exit 1
     else
-        stop_service
+        iterate_apps_by_runstate running kill_service
     fi
     ;;
 restart)
-    count_running
+    iterate_apps_by_runstate running count
     if [ $? -eq 0 ]
     then 
         echo "Event Services not running."
-        echo "Cannot restart."
-        exit 0
+        exit 1
     else
-        stop_service
-        start_service
+        iterate_apps_by_runstate running kill_service
+        iterate_apps_by_runstate not_running run_apps
     fi
     ;;
 help)
@@ -204,5 +207,3 @@ help)
     show_help
     ;;
 esac
-
-exit 0
