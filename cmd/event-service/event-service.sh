@@ -4,18 +4,24 @@ pidpath=/tmp
 repobase=$GOPATH/src/github.com/craigdfrench/event
 installed_apps=`find $repobase -name '*.go' | xargs grep  -n '^package main$' | cut -d ':' -f 1-1 | xargs -n1 dirname | xargs -n1 basename`
 
-[[ $2 == "--verbose" ]] && VERBOSE=1
-[[ $2 == "-v" ]] && VERBOSE=1
+[[ $2 == "--verbose" ]] && verbose=1
+[[ $2 == "-v" ]] && verbose=1
 
 function show_help {
-    echo ${installed_apps} are installed apps
-    echo $0 cmd
-    echo where cmd is
-    echo restart
-    echo start
-    echo stop
-    echo status
-    echo help
+cat<<HERE
+event-service USAGE
+$0 [cmd] [option]
+
+where [cmd] is one of:
+   restart: stop the running services and start them again
+   start: if services not running, stop the services 
+   stop: if services running, stop the services
+   status: show the status of the services
+   help: this help text
+
+where [options]
+   --verbose or -v: extra logging information
+HERE
 }
 
 function build {
@@ -25,49 +31,29 @@ function build {
 }
 
 function verbose {
-    if [ ${VERBOSE} ]
+    if [ ${verbose} ]
     then
         echo $*
     fi
 }
 
-function iterate_apps {
-    local action=$1; local accumulator=0
-    for appcmd in ${installed_apps[@]}; do
-        verbose "iterate_apps:${action} $appcmd $accumulator ${@:2}"
-        ${action} $appcmd $accumulator "${@:2}"
-        accumulator=$?
-        verbose accumulator=$accumulator
+function iterate_apps_by_runstate {
+    local sense=$1 cmd=$2 accumulator=0 pidfile appcmd service
+    for service in ${installed_apps[@]}; do
+        pidfile=${pidpath}/${appname}.${service}.pid
+        [[ -e $pidfile ]] && pidFilePresent="running" || pidFilePresent="not_running"
+        if [[ $sense == $pidFilePresent ]]
+        then
+            verbose "iterate_apps_by_runstate executing <$cmd> <$pidfile> <$service>"
+            $cmd $pidfile $service
+            accumulator=$((accumulator+1))
+        fi
     done
     return $accumulator
 }
 
-# app_callbacks are called with 2 parameters: path_to_pidfile_for_component name_of_component
-# iterate_apps_by_runstate [running|notrunning] app_callback ...(additional parameters)
-function iterate_apps_by_runstate {
-    local runstate=$1
-    iterate_apps conditional_cmd $runstate "${@:2}"
-    return $?
-}
-
-# To use, call iterate_apps conditional_cmd [running|not_running]
-function conditional_cmd {
-    local pidfile=${pidpath}/${appname}.$1.pid
-    local appcmd=$1;local accumulator=$2;local cmd=$4;local sense=$3
-    [[ -e $pidfile ]] && pidFilePresent="running" || pidFilePresent="not_running"
-    verbose echo "inside <${@}> conditional_cmd cmd <$cmd> appcmd <$appcmd> accumulator <$accumulator> sense <$sense> pidFilePresent <$pidFilePresent>"
-    
-    if [[ $sense == $pidFilePresent ]]
-    then
-        verbose "conditional_cmd executing <$cmd> <$pidfile> <$appcmd> "
-        $cmd $pidfile $appcmd
-        accumulator=$((accumulator+1))
-    fi
-    return $accumulator
-}
-
 function launch_service {
-    local app=$2;local pidfile=$1
+    local app=$2 pidfile=$1
     echo Starting service $app
     $app &
     echo $! > $pidfile
@@ -79,18 +65,21 @@ function count {
 }
 
 function print_ps {
-    ps `cat $1` | tail -1
+    local pidfile=$1
+    ps `cat $pidfile` | tail -1
 }
 
 function print_notrunning {
+    local pidfile=$1 service=$2
     echo Service $2 is not running
 }
 
 function kill_service {
-    echo Shutting down service $2
-    kill `cat $1`
-    echo Removing pid file $1
-    rm $1
+    local pidfile=$1 service=$2
+    echo Shutting down service $service
+    kill `cat $pidfile`
+    echo Removing pid file $pidfile
+    rm $pidfile
 }
 
 case "$1" in
