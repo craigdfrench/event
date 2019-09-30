@@ -42,7 +42,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterEventServiceServer(s, &daemon.EventServer{db})
+	pb.RegisterEventServiceServer(s, &daemon.EventServer{Database: db})
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

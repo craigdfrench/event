@@ -7,9 +7,6 @@ import (
 	"time"
 
 	pb "github.com/craigdfrench/event/daemon/grpc"
-
-	// Tied to postgreSQL
-	_ "github.com/lib/pq"
 )
 
 const (
@@ -94,7 +91,6 @@ func GetEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
 		eventRecord := pb.Event{}
 		if err = rows.Scan(&eventRecord.Id, &eventRecord.CreatedAt, &eventRecord.Email, &eventRecord.Environment, &eventRecord.Component, &eventRecord.Message, &eventRecord.Data); err != nil {
 			fmt.Println("Errored out", err.Error())
-
 			eventRecords = nil
 			break
 		}
@@ -103,4 +99,3 @@ func GetEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
 	}
 	return eventRecords, err
 }
-
