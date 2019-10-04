@@ -1,4 +1,4 @@
-package daemon 
+package daemon
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	pb "github.com/craigdfrench/event/daemon/grpc"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/craigdfrench/event/storage"
 )
 
@@ -49,18 +48,8 @@ func (s *EventServer) WriteSingleEvent(ctx context.Context, in *pb.Event) (*pb.E
 // WriteEvent implements storage.QueryMultipleEvents
 func (s *EventServer) QueryMultipleEvents(ctx context.Context, in *pb.QueryEventRequest) (response *pb.QueryEventResponse, err error) {
 	//log.Println("Received: ", in.CreatedAt, in.Email, in.Environment, in.Component, in.Message, in.Data)
-	startTime := time.Now()
-	if startTime, err = ptypes.Timestamp(in.GetTimeRange().GetStartTime()); err != nil {
-		startTime = time.Now()
-	}
 	eventList := []*pb.Event{}
-	query := storage.Event{
-		CreatedAt:   startTime,
-		Email:       in.Email,
-		Environment: in.Environment,
-		Component:   in.Component,
-		Message:     in.Message}
-	eventList, err = storage.GetEvents(s.Database, query)
+	eventList, err = storage.GetEvents(s.Database, *in)
 	response = &pb.QueryEventResponse{Results: eventList}
 	return
 }
@@ -71,4 +60,3 @@ func (s *EventServer) ReadSingleEvent(ctx context.Context, in *pb.EventIdentifie
 	event := pb.Event{}
 	return &event, nil
 }
-

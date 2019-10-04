@@ -7,6 +7,7 @@ import (
 	"time"
 
 	pb "github.com/craigdfrench/event/daemon/grpc"
+	"github.com/golang/protobuf/ptypes"
 )
 
 const (
@@ -49,8 +50,8 @@ func InsertEvent(db *sql.DB, CreatedAt, Email, Environment, Component, Message, 
 }
 
 // GetEvents will retrieve events as per query
-func GetEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
-	fmt.Printf("query is %s %d %d", query, len(query.Message), len(query.Environment))
+func GetEvents(db *sql.DB, query pb.QueryEventRequest) ([]*pb.Event, error) {
+	fmt.Printf("query is %v %d %d", query, len(query.Message), len(query.Environment))
 	var queryString []string
 	var queryArgs []interface{}
 	if len(query.Component) > 0 {
@@ -69,6 +70,19 @@ func GetEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
 		queryString = append(queryString, fmt.Sprintf(`POSITION($%d in "Message")>0`, len(queryArgs)+1))
 		queryArgs = append(queryArgs, query.Message)
 	}
+	if query.TimeRange.StartTime != nil {
+		if timeValue, err := ptypes.Timestamp(query.TimeRange.StartTime); err == nil {
+			queryString = append(queryString, fmt.Sprintf(`"CreatedAt" > $%d `, len(queryArgs)+1))
+			queryArgs = append(queryArgs, timeValue.Format("2006-01-02T15:04:05-0700"))
+		}
+	}
+	if query.TimeRange.EndTime != nil {
+		if timeValue, err := ptypes.Timestamp(query.TimeRange.EndTime); err == nil {
+			queryString = append(queryString, fmt.Sprintf(`"CreatedAt" < $%d `, len(queryArgs)+1))
+			queryArgs = append(queryArgs, timeValue.Format("2006-01-02T15:04:05-0700"))
+		}
+	}
+
 	fmt.Println("queryString is ", queryString, "=>", queryArgs)
 	var whereClause string
 	switch len(queryString) {
@@ -79,7 +93,7 @@ func GetEvents(db *sql.DB, query Event) ([]*pb.Event, error) {
 	default:
 		whereClause = strings.Join(queryString, " AND ")
 	}
-	fmt.Printf("whereClause  is SELECT * from public.event WHERE %s", whereClause)
+	fmt.Printf("SELECT * from public.event WHERE %s %v", whereClause, queryArgs)
 	rows, err := db.Query("SELECT * from public.event WHERE "+whereClause, queryArgs...)
 	if err != nil {
 		fmt.Println(err.Error())

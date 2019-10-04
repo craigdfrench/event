@@ -8,6 +8,8 @@ import (
 
 	pb "github.com/craigdfrench/event/daemon/grpc"
 	"github.com/gin-gonic/gin"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 // Event generated from form
@@ -53,11 +55,33 @@ func FormReadEvents(service pb.EventServiceClient) func(*gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
+		var startTime, endTime time.Time
+		var startTimeStamp, endTimeStamp *timestamp.Timestamp
+		var err error
+
+		if startTime, err = time.Parse("2006-01-02T15:04:05-0700", c.Query("startTime")); err == nil {
+			if startTimeStamp, err = ptypes.TimestampProto(startTime); err != nil {
+				startTimeStamp = nil
+			}
+
+		}
+		if endTime, err = time.Parse("2006-01-02T15:04:05-0700", c.Query("endTime")); err == nil {
+			if endTimeStamp, err = ptypes.TimestampProto(endTime); err != nil {
+				endTimeStamp = nil
+			}
+		}
+
 		request := &pb.QueryEventRequest{
-			Email:       c.Query("Email"),
-			Environment: c.Query("Environment"),
-			Component:   c.Query("Component"),
-			Message:     c.Query("Message")}
+			Email:       c.Query("email"),
+			Environment: c.Query("environment"),
+			Component:   c.Query("component"),
+			Message:     c.Query("message"),
+			TimeRange: &pb.TimeQuery{
+				StartTime: startTimeStamp,
+				EndTime:   endTimeStamp,
+				Duration:  nil,
+			},
+		}
 
 		eventRecords, err := service.QueryMultipleEvents(ctx, request)
 		if err != nil {
